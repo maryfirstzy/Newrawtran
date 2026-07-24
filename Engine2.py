@@ -120,6 +120,7 @@ def process_transaction(raw_tx_hex):
                 pk_bytes = b''
                 key_type = "Unknown"
                 
+                # Fixed byte indexing check to allow direct match comparisons
                 if len(pk_bytes_comp) == 33 and pk_bytes_comp[0] in [0x02, 0x03]:
                     pk_bytes = pk_bytes_comp
                     key_type = "Compressed"
