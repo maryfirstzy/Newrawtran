@@ -29,7 +29,6 @@ def base58_encode(payload):
     return result
 
 def pubkey_to_address(pubkey_bytes):
-    """Generates a Mainnet Legacy P2PKH Address supporting Compressed and Uncompressed formats"""
     try:
         sha = hashlib.sha256(pubkey_bytes).digest()
         h = hashlib.new('ripemd160', sha).digest()
@@ -48,7 +47,6 @@ def parse_varint(data, offset):
     return int.from_bytes(data[offset:offset+8], 'little'), offset+8
 
 def analyze_signature(sig_data):
-    """Evaluates extracted metrics for absolute reuse and mathematical variance"""
     global SIGNATURES_DB
     new_r_int = int(sig_data["r"], 16)
     
@@ -62,7 +60,6 @@ def analyze_signature(sig_data):
         if old_r_int == 0: 
             continue
             
-        # 1. Exact Structural Duplicate Match
         if sig_data["r"] == old_sig["r"]:
             line = (
                 f"txid1: {old_sig['txid']}\naddress1: {old_sig['address']}\n"
@@ -74,9 +71,8 @@ def analyze_signature(sig_data):
                 "----------------------------------"
             )
             zapisz_do_pliku(IDENTICAL_R_FILE, line)
-            print(f"💥 MATCH DETECTED: Logged pattern context to '{IDENTICAL_R_FILE}'")
+            print(f"💥 MATCH DETECTED: Logged duplicate pattern to '{IDENTICAL_R_FILE}'")
             
-        # 2. Ratio Delta Range Verification
         elif sig_data["address"] == old_sig["address"]:
             ratio = new_r_int / old_r_int if new_r_int >= old_r_int else old_r_int / new_r_int
             if 0.9 <= ratio <= 1.1:
@@ -101,28 +97,24 @@ def process_transaction(raw_tx_hex):
 
     offset = 4
     try:
-        # Check and handle SegWit Native serialization markers
         if tx_bytes[offset] == 0x00 and tx_bytes[offset+1] != 0x00:
             offset += 2
             
         vin_count, offset = parse_varint(tx_bytes, offset)
         for _ in range(vin_count):
-            offset += 36  # Previous TxOutpoint jump index
+            offset += 36  
             slen, offset = parse_varint(tx_bytes, offset)
             script_sig = tx_bytes[offset-slen:offset]
-            offset += 4   # Sequence parameters
+            offset += 4   
 
             if b'\x30' in script_sig:
                 s_idx = script_sig.index(b'\x30')
                 total_sig_len = script_sig[s_idx+1] + 2
                 sig_bytes = script_sig[s_idx:s_idx+total_sig_len]
                 
-                # Check target payload bounds following the signature string
                 pk_start = s_idx + total_sig_len + 1
                 
-                # Try evaluating as Compressed Key (33 Bytes)
                 pk_bytes_comp = script_sig[pk_start:pk_start+33]
-                # Try evaluating as Uncompressed Key (65 Bytes)
                 pk_bytes_uncomp = script_sig[pk_start:pk_start+65]
                 
                 pk_bytes = b''
@@ -136,7 +128,6 @@ def process_transaction(raw_tx_hex):
                     key_type = "Uncompressed"
                 
                 if pk_bytes:
-                    # Strip sighash trailing byte (usually 0x01) and unpack DER signature
                     r, s = util.sigdecode_der(sig_bytes[:-1], SECP256k1.order)
                     
                     sig_data = {
@@ -163,7 +154,7 @@ def main():
             
         print("✅ Analysis execution cleanly finished.")
     except FileNotFoundError:
-        print(f"❌ Target context layout feed structure '{INPUT_HEX_FILE}' missing.")
+        print(f"❌ Target feed source file '{INPUT_HEX_FILE}' is missing.")
 
 if __name__ == "__main__":
     main()
